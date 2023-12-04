@@ -17,16 +17,15 @@ let scene, camera, renderer, controls, asteroidBelt, sun;
 const planets = {}; // Storing planet meshes by name
 
 const planetsData = [
-    { name: "Mercury", color: 0xaaaaaa, size: 0.38, distance: 1.39, orbitSpeed: 0.04, texturePath: mercury, orbitColor: 0xffffff },
-    { name: "Venus", color: 0xffd700, size: 0.95, distance: 1.72, orbitSpeed: 0.02, texturePath: venus, orbitColor: 0xffffff },
-    { name: "Earth", color: 0x0000ff, size: 1, distance: 2, orbitSpeed: 0.01, texturePath: earth, orbitColor: 0xffffff },
-    { name: "Mars", color: 0xff4500, size: 0.53, distance: 2.52, orbitSpeed: 0.008, texturePath: mars, orbitColor: 0xffffff },
-    { name: "Jupiter", color: 0xffa500, size: 9.2, distance: 6.3, orbitSpeed: 0.004, texturePath: jupiter, orbitColor: 0xffffff },
-    { name: "Saturn", color: 0xf4c542, size: 7.45, distance: 10.58, orbitSpeed: 0.003, texturePath: saturn, orbitColor: 0xffffff, ringTexturePath: saturnRings },
-    { name: "Uranus", color: 0x4169e1, size: 4, distance: 20.22, orbitSpeed: 0.002, texturePath: uranus, orbitColor: 0xffffff },
-    { name: "Neptune", color: 0x1e90ff, size: 3.88, distance: 31.05, orbitSpeed: 0.001, texturePath: neptune, orbitColor: 0xffffff }
+    { name: "Mercury", color: 0xaaaaaa, size: 0.03504, distance: 1.39, orbitSpeed: 0.04, texturePath: mercury, orbitColor: 0xaaaaaa },
+    { name: "Venus", color: 0xffd700, size: 0.08691, distance: 1.72, orbitSpeed: 0.02, texturePath: venus, orbitColor: 0xffd700 },
+    { name: "Earth", color: 0x0000ff, size: 0.09149, distance: 2, orbitSpeed: 0.01, texturePath: earth, orbitColor: 0x0000ff },
+    { name: "Mars", color: 0xff4500, size: 0.04868, distance: 2.52, orbitSpeed: 0.008, texturePath: mars, orbitColor: 0xff4500 },
+    { name: "Jupiter", color: 0xffa500, size: 1.00398, distance: 6.3, orbitSpeed: 0.004, texturePath: jupiter, orbitColor: 0xffa500 },
+    { name: "Saturn", color: 0xf4c542, size: 0.83626, distance: 10.58, orbitSpeed: 0.003, texturePath: saturn, orbitColor: 0xf4c542, ringTexturePath: saturnRings },
+    { name: "Uranus", color: 0x4169e1, size: 0.36422, distance: 20.22, orbitSpeed: 0.002, texturePath: uranus, orbitColor: 0x4169e1 },
+    { name: "Neptune", color: 0x1e90ff, size: 0.35359, distance: 31.05, orbitSpeed: 0.001, texturePath: neptune, orbitColor: 0x1e90ff }
 ];
-
 
 function init() {
     scene = new THREE.Scene();
@@ -48,7 +47,7 @@ function init() {
     controls.dampingFactor = 0.25; // Damping inertia factor
     controls.screenSpacePanning = false;
     controls.maxDistance = 500;
-    controls.minDistance = 10;
+    controls.minDistance = 1;
 
      // Swap the mouse buttons for rotate and pan
     controls.mouseButtons = {
@@ -70,7 +69,6 @@ function init() {
     sunLight.castShadow = true;
     scene.add(sunLight);
 
-    //Add Ambient light adjustment
     const ambientLight = new THREE.AmbientLight(0x444444);
     scene.add(ambientLight);
 
@@ -97,25 +95,16 @@ function animate() {
         const angle = planetInfo.orbitSpeed * Date.now() * 0.001;
         planet.mesh.position.x = Math.cos(angle) * planetInfo.distance * 10;
         planet.mesh.position.z = Math.sin(angle) * planetInfo.distance * 10;
-        
+
+        // Update label scale based on distance to camera
+        const distance = camera.position.distanceTo(planet.mesh.position);
+        const scale = THREE.MathUtils.clamp(distance / 5, 5, 50);
+        planet.label.scale.set(scale, scale / 2, 1); // Maintain the aspect ratio of the label
+
         updatePlanetRotation(planet.mesh, sun.position);
     }
 
-    planetsData.forEach(planetData => {
-        const planet = planets[planetData.name].mesh;
-        backSideIllumination(planet, sun.position);
-    });
-
     renderer.render(scene, camera);
-}
-
-function backSideIllumination(planetMesh, sunPosition) {
-    const toSun = new THREE.Vector3().subVectors(planetMesh.position, sunPosition).normalize();
-    const toCam = new THREE.Vector3().subVectors(camera.position, planetMesh.position).normalize();
-    const dot = toSun.dot(toCam); // Angle between sun-planet and planet-camera vectors
-
-    // Adjust the emissive intensity based on the angle to the camera
-    planetMesh.material.emissiveIntensity = THREE.MathUtils.lerp(0.1, 0.5, dot);
 }
 
 function updatePlanetRotation(planetMesh, sunPosition) {
@@ -143,7 +132,43 @@ function createPlanet(planetData) {
         addRingsToSaturn(planet, planetData);
     }
 
-    return { mesh: planet };
+    // Create and add the label
+    const label = createLabel(planetData.name, planetData.size);
+    label.position.y = planetData.size * 2; // Position above the planet
+    planet.add(label);
+
+    // Create and add the ring
+    const ring = createRing(planetData.size, planetData.color);
+    planet.add(ring);
+
+    return { mesh: planet, label: label, ring: ring };
+}
+
+function createLabel(name, planetSize) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    context.font = '16px Arial';
+    context.fillStyle = 'white';
+    context.fillText(name, 10, 20);
+
+    const texture = new THREE.Texture(canvas);
+    texture.needsUpdate = true;
+
+    const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.scale.set(planetSize * 5, planetSize * 2.5, 1); // Scale based on planet size
+
+    return sprite;
+}
+
+function createRing(planetSize, color) {
+    const innerSize = planetSize * 1.5; // Make sure the ring is larger than the planet
+    const outerSize = innerSize * 1.1; // Make the ring slightly larger than the inner size
+    const ringGeometry = new THREE.RingGeometry(innerSize, outerSize, 64);
+    const ringMaterial = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
+    const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+    ring.rotation.x = Math.PI / 2; // Rotate to encircle the planet
+    return ring;
 }
 
 function addRingsToSaturn(planetMesh, planetData) {
@@ -186,7 +211,10 @@ function addRingsToSaturn(planetMesh, planetData) {
 
 function createOrbit(distanceFromSun, color) {
     const orbitRadius = distanceFromSun * 10;
-    const orbitGeometry = new THREE.RingGeometry(orbitRadius - 0.1, orbitRadius + 0.1, 64);
+    const orbitThickness = 0.03;
+    const orbitSegments = 128;
+
+    const orbitGeometry = new THREE.RingGeometry(orbitRadius, orbitRadius + orbitThickness, orbitSegments);
     const orbitMaterial = new THREE.MeshBasicMaterial({ color: color, side: THREE.DoubleSide });
     const orbit = new THREE.Mesh(orbitGeometry, orbitMaterial);
     orbit.rotation.x = Math.PI / 2;
