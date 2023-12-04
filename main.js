@@ -12,6 +12,7 @@ import saturnRings from './assets/images/saturn_ring.png';
 import uranus from './assets/images/uranus.jpg';
 import neptune from './assets/images/neptune.jpg';
 import sunTexture from './assets/images/sun.jpg';
+import stars from './assets/images/stars.jpg';
 
 let scene, camera, renderer, controls, asteroidBelt, sun;
 const planets = {}; // Storing planet meshes by name
@@ -40,6 +41,8 @@ function init() {
     renderer.gammaOutput = true;
     renderer.gammaFactor = 2.2;
     document.body.appendChild(renderer.domElement);
+
+    addStarBackground();
 
     // Initialize OrbitControls
     controls = new OrbitControls(camera, renderer.domElement);
@@ -91,7 +94,7 @@ function init() {
     });    
 
     const glowMesh = new THREE.Mesh(sun.geometry.clone(), SGmaterial);
-    glowMesh.scale.multiplyScalar(1.2);
+    glowMesh.scale.multiplyScalar(1.1);
     sun.add(glowMesh); 
 
     // Add point light at the Sun's position
@@ -137,6 +140,22 @@ function animate() {
 
     renderer.render(scene, camera);
 }
+
+function addStarBackground() {
+    const loader = new THREE.TextureLoader();
+    const texture = loader.load(stars);
+    const geometry = new THREE.SphereGeometry(500, 64, 64);
+    const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.BackSide,
+        //make darker
+        color: 0x111111,
+    });
+    const starBackground = new THREE.Mesh(geometry, material);
+
+    scene.add(starBackground);
+}
+
 
 function updatePlanetRotation(planetMesh, sunPosition) {
     const directionToSun = new THREE.Vector3().subVectors(sunPosition, planetMesh.position);
