@@ -62,6 +62,37 @@ function init() {
     let sunMaterial = new THREE.MeshBasicMaterial({ map: textureLoader.load(sunTexture) });
     sun = new THREE.Mesh(sunGeometry, sunMaterial);
     scene.add(sun);
+    const vertexShader = `
+        varying vec3 vNormal;
+
+        void main() {
+            vNormal = normalize(normalMatrix * normal);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `;
+
+    const fragmentShader = `
+        varying vec3 vNormal;
+
+        void main() {
+            float intensity = pow(0.5 - dot(vNormal, vec3(0, 0, 1)), 5.0);
+            // Decrease the alpha based on the intensity to make it transparent
+            gl_FragColor = vec4(1.0, 0.9, 0.5, intensity);
+        }
+    `;
+
+    const SGmaterial = new THREE.ShaderMaterial({
+        vertexShader: vertexShader,
+        fragmentShader: fragmentShader,
+        blending: THREE.AdditiveBlending,
+        depthTest: false, // disable depth testing
+        transparent: true, // enable transparency
+        side: THREE.BackSide
+    });    
+
+    const glowMesh = new THREE.Mesh(sun.geometry.clone(), SGmaterial);
+    glowMesh.scale.multiplyScalar(1.2);
+    sun.add(glowMesh); 
 
     // Add point light at the Sun's position
     const sunLight = new THREE.PointLight(0xffffff, 2000, 200);
