@@ -16,6 +16,7 @@ import stars from './assets/images/stars.jpg';
 
 let scene, camera, renderer, controls, asteroidBelt, sun;
 const planets = {}; // Storing planet meshes by name
+let SGmaterial;
 
 const planetsData = [
     { name: "Mercury", color: 0xaaaaaa, size: 0.03504, distance: 1.39, orbitSpeed: 0.04, texturePath: mercury, orbitColor: 0xaaaaaa },
@@ -67,26 +68,33 @@ function init() {
     scene.add(sun);
     const vertexShader = `
         varying vec3 vNormal;
-
+        varying vec3 vPosition;
+        
         void main() {
             vNormal = normalize(normalMatrix * normal);
+            vPosition = (modelMatrix * vec4(position, 1.0)).xyz;
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
     `;
 
     const fragmentShader = `
+        uniform vec3 cameraPos;
         varying vec3 vNormal;
-
+        varying vec3 vPosition;
+        
         void main() {
-            float intensity = pow(0.5 - dot(vNormal, vec3(0, 0, 1)), 5.0);
-            // Decrease the alpha based on the intensity to make it transparent
+            vec3 viewVector = normalize(cameraPos - vPosition);
+            float intensity = pow(0.5 - dot(vNormal, viewVector), 5.0);
             gl_FragColor = vec4(1.0, 0.9, 0.5, intensity);
         }
     `;
 
-    const SGmaterial = new THREE.ShaderMaterial({
+    SGmaterial = new THREE.ShaderMaterial({
         vertexShader: vertexShader,
         fragmentShader: fragmentShader,
+        uniforms: {
+            cameraPos: { value: camera.position }
+        },
         blending: THREE.AdditiveBlending,
         depthTest: false, // disable depth testing
         transparent: true, // enable transparency
@@ -95,7 +103,7 @@ function init() {
 
     const glowMesh = new THREE.Mesh(sun.geometry.clone(), SGmaterial);
     glowMesh.scale.multiplyScalar(1.1);
-    sun.add(glowMesh); 
+    sun.add(glowMesh);
 
     // Add point light at the Sun's position
     const sunLight = new THREE.PointLight(0xffffff, 2000, 200);
@@ -121,6 +129,8 @@ function init() {
 function animate() {
     requestAnimationFrame(animate);
 
+    SGmaterial.uniforms.cameraPos.value.copy(camera.position);
+    
     controls.update();
 
     for (const planetName in planets) {
