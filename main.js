@@ -13,6 +13,7 @@ import uranus from './assets/images/uranus.jpg';
 import neptune from './assets/images/neptune.jpg';
 import sunTexture from './assets/images/sun.jpg';
 import stars from './assets/images/stars.jpg';
+import moon from './assets/images/moon.jpg';
 
 let scene, camera, renderer, controls, asteroidBelt, sun;
 const planets = {}; // Storing planet meshes by name
@@ -28,6 +29,15 @@ const planetsData = [
     { name: "Uranus", color: 0x4169e1, size: 0.36422, distance: 20.22, orbitSpeed: 0.002, texturePath: uranus, orbitColor: 0x4169e1 },
     { name: "Neptune", color: 0x1e90ff, size: 0.35359, distance: 31.05, orbitSpeed: 0.001, texturePath: neptune, orbitColor: 0x1e90ff }
 ];
+
+const moonData = {
+    name: "Moon",
+    color: 0xffffff,
+    size: 0.015,
+    distanceFromEarth: 0.2,
+    orbitSpeed: 0.005,
+    texturePath: moon
+};
 
 function init() {
     scene = new THREE.Scene();
@@ -123,6 +133,13 @@ function init() {
 
     asteroidBelt = createAsteroidBelt();
 
+    let earth = planets["Earth"];
+    if (earth) {
+        const moon = createMoon(earth, moonData);
+        moon.castShadow = true;
+        earth.moon = moon; // Store the Moon in the Earth object for access during animation
+    }
+
     camera.position.z = 120;
 }
 
@@ -146,6 +163,11 @@ function animate() {
         planet.label.scale.set(scale, scale / 2, 1); // Maintain the aspect ratio of the label
 
         updatePlanetRotation(planet.mesh, sun.position);
+    }
+
+    const earth = planets["Earth"];
+    if (earth && earth.moon) {
+        earth.moon.pivot.rotation.y += moonData.orbitSpeed;
     }
 
     renderer.render(scene, camera);
@@ -202,6 +224,27 @@ function createPlanet(planetData) {
     planet.add(ring);
 
     return { mesh: planet, label: label, ring: ring };
+}
+
+function createMoon(earth, moonData) {
+    const moonTexture = new THREE.TextureLoader().load(moonData.texturePath);
+    const moonMaterial = new THREE.MeshPhongMaterial({ map: moonTexture });
+    const moonGeometry = new THREE.SphereGeometry(moonData.size, 32, 32);
+    const moonMesh = new THREE.Mesh(moonGeometry, moonMaterial);
+
+    // Create a pivot at the Earth's position
+    const moonPivot = new THREE.Object3D();
+
+    // Set the Moon's position relative to the Earth
+    moonMesh.position.set(moonData.distanceFromEarth, 0, 0);
+
+    // Add the Moon mesh to the pivot
+    moonPivot.add(moonMesh);
+
+    // Add the pivot as a child of the Earth mesh so that it follows the Earth
+    earth.mesh.add(moonPivot);
+
+    return { mesh: moonMesh, pivot: moonPivot };
 }
 
 function createLabel(name, planetSize) {
