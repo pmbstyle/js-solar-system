@@ -26,7 +26,7 @@ To set up the project locally, follow these steps:
 
 ```bash
 git clone https://github.com/pmbstyle/js-solar-system.git
-cd your-repository-directory
+cd js-solar-system
 ```
 
 2. Install the necessary packages using npm:
