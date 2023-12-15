@@ -136,7 +136,6 @@ function init() {
     let earth = planets["Earth"];
     if (earth) {
         const moon = createMoon(earth, moonData);
-        moon.castShadow = true;
         earth.moon = moon; // Store the Moon in the Earth object for access during animation
     }
 
